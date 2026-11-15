@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#09090b"><title>3D Music • Ujjwal</title>
-<script src="https://cdn.tailwindcss.com"><\/script>
+<script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
@@ -80,4 +80,4 @@ $('fileInput').addEventListener('change',e=>{const files=Array.from(e.target.fil
 function drawViz(){const c=$('visualizer'),ctx=c.getContext('2d'),data=new Uint8Array(analyser.frequencyBinCount);function frame(){requestAnimationFrame(frame);analyser.getByteFrequencyData(data);ctx.clearRect(0,0,c.width,c.height);const w=c.width/data.length;for(let i=0;i<data.length;i++){const h=data[i]/255*55;ctx.fillStyle='rgba(168,85,247,'+(0.25+data[i]/500)+')';ctx.fillRect(i*w,c.height/2-h/2,Math.max(2,w-2),h)}}frame()}
 window.addEventListener('beforeunload',()=>localUrls.forEach(URL.revokeObjectURL));
 })();
-<\/script></body></html>
+</script></body></html>
