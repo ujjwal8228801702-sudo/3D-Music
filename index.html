@@ -51,13 +51,23 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 async function searchOnlineMusic(query){
  const q=(query||$('searchInput').value).trim();if(!q){say('पहले गाने या Singer का नाम लिखें।');$('searchInput').focus();return}
  $('searchInput').value=q;$('searchBtn').disabled=true;$('searchBtn').textContent='...';say('ऑनलाइन गाने खोजे जा रहे हैं...');results.innerHTML='<p class="text-xs text-center text-zinc-400 py-4">लोड हो रहा है...</p>';
+ let script=null,callbackName='itunesCallback_'+Date.now()+'_'+Math.floor(Math.random()*100000);
  try{
-  const url='https://itunes.apple.com/search?term='+encodeURIComponent(q)+'&entity=song&limit=25&country=IN';
-  const res=await fetch(url,{method:'GET'});if(!res.ok)throw new Error('Search server HTTP '+res.status);
-  const data=await res.json();tracks=(data.results||[]).filter(x=>x.previewUrl);
+  const data=await new Promise((resolve,reject)=>{
+   let settled=false;
+   const cleanup=()=>{if(script&&script.parentNode)script.parentNode.removeChild(script);try{delete window[callbackName]}catch(_){window[callbackName]=undefined}};
+   const finish=(err,value)=>{if(settled)return;settled=true;clearTimeout(timer);cleanup();err?reject(err):resolve(value)};
+   window[callbackName]=value=>finish(null,value);
+   script=document.createElement('script');
+   script.src='https://itunes.apple.com/search?term='+encodeURIComponent(q)+'&media=music&entity=song&limit=25&country=IN&callback='+callbackName;
+   script.onerror=()=>finish(new Error('Apple search script load failed'));
+   const timer=setTimeout(()=>finish(new Error('Search timed out. Internet connection जाँचें।')),15000);
+   document.head.appendChild(script);
+  });
+  tracks=(data.results||[]).filter(x=>x.previewUrl);
   if(!tracks.length){results.innerHTML='<p class="text-xs text-center text-zinc-400 py-4">कोई preview नहीं मिला। दूसरा नाम खोजें।</p>';say('कोई playable preview नहीं मिला।');return}
   $('listTitle').textContent='SEARCH RESULTS ('+tracks.length+')';render();say(tracks.length+' गाने मिले। चलाने के लिए किसी गाने पर टैप करें।');
- }catch(e){console.error(e);results.innerHTML='<p class="text-xs text-center text-rose-300 py-4">Online search नहीं हो पाया। Internet / browser connection जाँचें और फिर कोशिश करें।</p>';say('Search error: '+e.message)}
+ }catch(e){console.error(e);results.innerHTML='<p class="text-xs text-center text-rose-300 py-4">ऑनलाइन खोज नहीं हो पाई। Internet जाँचें या थोड़ी देर बाद कोशिश करें।</p>';say('Search error: '+e.message)}
  finally{$('searchBtn').disabled=false;$('searchBtn').textContent='खोजें'}
 }
 function render(){results.innerHTML='';tracks.forEach((t,i)=>{const b=document.createElement('button');b.className='song';b.innerHTML='<img src="'+esc(t.artworkUrl100||'')+'" alt=""><span class="min-w-0 flex-1"><b class="block text-xs truncate">'+esc(t.trackName)+'</b><small class="block text-[10px] text-zinc-400 truncate">'+esc(t.artistName)+' • '+esc(t.collectionName||'')+'</small></span><i class="fa-solid fa-play text-purple-300 text-xs"></i>';b.addEventListener('click',()=>playTrack(i));results.appendChild(b)})}
