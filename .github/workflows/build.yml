@@ -22,7 +22,23 @@ jobs:
           cp index.html app/src/main/assets/index.html
 
           python3 -c '
-          open("settings.gradle", "w").write("rootProject.name = \"3D Music\"\ninclude \":app\"\n")
+          open("settings.gradle", "w").write("""pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "3D Music"
+          include ":app"
+          """)
 
           open("build.gradle", "w").write("""plugins {
               id "com.android.application" version "8.2.2" apply false
