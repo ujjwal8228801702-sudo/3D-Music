@@ -6,12 +6,13 @@
     <meta name="theme-color" content="#09090b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>3D Music - Online Ad-Free Spatial Player</title>
+    <title>3D Music - Online & Party Sync Player</title>
 
     <!-- Custom Embedded 3D Music Logo -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='115' fill='%2309090b'/%3E%3Cpolygon points='256,120 365,183 256,246 147,183' fill='%23a855f7'/%3E%3Cpolygon points='147,183 256,246 256,372 147,309' fill='%236366f1'/%3E%3Cpolygon points='365,183 256,246 256,372 365,309' fill='%2306b6d4'/%3E%3Crect x='224' y='230' width='12' height='52' rx='6' fill='%23fff'/%3E%3Crect x='250' y='210' width='12' height='92' rx='6' fill='%23fff'/%3E%3Crect x='276' y='238' width='12' height='40' rx='6' fill='%23fff'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
@@ -33,22 +34,14 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
         }
 
-        .disc-container {
-            perspective: 1000px;
-        }
+        .disc-container { perspective: 1000px; }
         .vinyl-disc {
             transition: transform 0.2s ease-out, box-shadow 0.3s ease;
             transform-style: preserve-3d;
         }
-        .spinning {
-            animation: spin 12s linear infinite;
-        }
-        .paused {
-            animation-play-state: paused;
-        }
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
+        .spinning { animation: spin 12s linear infinite; }
+        .paused { animation-play-state: paused; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .neon-active {
             box-shadow: 0 0 20px rgba(139, 92, 246, 0.6), inset 0 0 10px rgba(139, 92, 246, 0.4);
@@ -73,14 +66,8 @@
             box-shadow: 0 0 10px #a855f7;
         }
 
-        /* Hide scrollbar for category chips */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="flex items-center justify-center p-3 sm:p-4">
@@ -92,7 +79,7 @@
 
         <!-- Header -->
         <div class="flex justify-between items-center mb-4 relative z-10">
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2">
                 <svg class="w-9 h-9 rounded-xl shadow-lg shadow-purple-500/30" viewBox="0 0 512 512">
                     <rect width="512" height="512" rx="115" fill="#13112b"/>
                     <polygon points="256,115 370,180 256,245 142,180" fill="#a855f7"/>
@@ -104,13 +91,69 @@
                 </svg>
                 <div>
                     <span class="font-extrabold text-lg tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-cyan-300 block leading-none">3D Music</span>
-                    <span class="text-[10px] text-zinc-400 tracking-wider">ONLINE • AD-FREE</span>
+                    <span class="text-[10px] text-zinc-400 tracking-wider">PARTY • AD-FREE</span>
                 </div>
             </div>
-            <label class="cursor-pointer text-[11px] bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/15 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5">
-                <i class="fa-solid fa-folder-open text-cyan-400"></i> Local MP3
-                <input type="file" id="fileInput" accept="audio/*" multiple class="hidden" onchange="handleFiles(this.files)">
-            </label>
+
+            <div class="flex items-center gap-1.5">
+                <!-- Party Sync Button -->
+                <button id="partyToggleBtn" onclick="togglePartyModal()" class="text-[11px] bg-gradient-to-r from-pink-600/40 to-purple-600/40 hover:from-pink-600/60 hover:to-purple-600/60 text-pink-200 border border-pink-500/40 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5 font-semibold">
+                    <i class="fa-solid fa-users-rays text-pink-400"></i>
+                    <span id="partyBadgeText">Party Sync</span>
+                </button>
+
+                <!-- Local MP3 -->
+                <label class="cursor-pointer text-[11px] bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/15 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1">
+                    <i class="fa-solid fa-folder-open text-cyan-400"></i> MP3
+                    <input type="file" id="fileInput" accept="audio/*" multiple class="hidden" onchange="handleFiles(this.files)">
+                </label>
+            </div>
+        </div>
+
+        <!-- Party Sync Drawer / Panel (Hidden by default) -->
+        <div id="partyPanel" class="hidden mb-4 p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/90 to-zinc-900/95 border border-pink-500/30 relative z-20 shadow-xl">
+            <div class="flex justify-between items-center mb-2.5">
+                <span class="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-tower-broadcast animate-pulse"></i> ग्रुप म्यूज़िक पार्टी (Live Sync)
+                </span>
+                <button onclick="togglePartyModal()" class="text-zinc-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="partySetupView">
+                <p class="text-[11px] text-zinc-300 mb-3">दोस्तों के फोन पास रखकर एक साथ गाना बजाएं:</p>
+                <div class="grid grid-cols-2 gap-2 mb-2.5">
+                    <button onclick="startPartyHost()" class="py-2 px-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-xs font-bold shadow-lg shadow-pink-600/30 active:scale-95 transition">
+                        <i class="fa-solid fa-crown mr-1"></i> Party बनाएं
+                    </button>
+                    <div class="flex gap-1">
+                        <input type="number" id="joinCodeInput" placeholder="4-Digit कोड" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-center text-white placeholder-zinc-400 focus:outline-none focus:border-pink-400">
+                        <button onclick="joinPartyFriend()" class="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold transition">Join</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="partyActiveView" class="hidden">
+                <div class="flex items-center justify-between bg-black/40 p-2.5 rounded-xl border border-white/10 mb-2">
+                    <div>
+                        <div class="text-[10px] text-zinc-400 uppercase" id="partyRoleLabel">HOST PARTY CODE</div>
+                        <div class="text-lg font-extrabold tracking-widest text-pink-400 font-mono" id="displayPartyCode">----</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs font-bold text-emerald-400" id="connectedPeersCount">0 दोस्त जुड़े हैं</div>
+                        <button onclick="leaveParty()" class="text-[10px] text-red-400 underline mt-0.5">पार्टी बंद करें</button>
+                    </div>
+                </div>
+                <!-- Surround Channel Role for Each Phone -->
+                <div class="flex items-center justify-between text-[11px] text-zinc-300 pt-1">
+                    <span>इस फोन का स्पीकर मोड:</span>
+                    <div class="flex gap-1">
+                        <button onclick="setSpeakerChannel(-1, this)" class="ch-btn px-2 py-0.5 rounded bg-white/10 hover:bg-purple-600/50">Left</button>
+                        <button onclick="setSpeakerChannel(0, this)" class="ch-btn px-2 py-0.5 rounded bg-purple-600 text-white font-bold">Stereo</button>
+                        <button onclick="setSpeakerChannel(1, this)" class="ch-btn px-2 py-0.5 rounded bg-white/10 hover:bg-purple-600/50">Right</button>
+                    </div>
+                </div>
+            </div>
+            <div id="partyStatusMsg" class="text-[10px] text-cyan-300 mt-1.5 text-center"></div>
         </div>
 
         <!-- Online Search Bar -->
@@ -118,37 +161,36 @@
             <div class="flex gap-2">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="गाना, सिंगर या मूड खोजें (जैसे Kishore, Arijit)..." 
+                    <input type="text" id="searchInput" placeholder="गाना या सिंगर खोजें (Kishore, Arijit)..." 
                         onkeydown="if(event.key==='Enter') searchOnlineMusic()"
-                        class="w-full bg-white/10 border border-white/15 rounded-2xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-purple-500 transition">
+                        class="w-full bg-white/10 border border-white/15 rounded-2xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-purple-500 transition">
                 </div>
-                <button onclick="searchOnlineMusic()" class="bg-gradient-to-r from-purple-600 to-cyan-500 px-4 rounded-2xl text-xs font-bold shadow-lg shadow-purple-600/30 active:scale-95 transition">
+                <button onclick="searchOnlineMusic()" class="bg-gradient-to-r from-purple-600 to-cyan-500 px-3.5 rounded-2xl text-xs font-bold shadow-lg shadow-purple-600/30 active:scale-95 transition">
                     खोजें
                 </button>
             </div>
 
-            <!-- Quick Mood / Genre Chips -->
-            <div class="flex gap-1.5 overflow-x-auto no-scrollbar mt-2.5 pb-1">
-                <button onclick="quickSearch('Bollywood Hit Songs')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🔥 Bollywood</button>
-                <button onclick="quickSearch('Kishore Kumar Classic')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">📻 Retro Hindi</button>
-                <button onclick="quickSearch('Arijit Singh Romantic')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">❤️ Romantic</button>
-                <button onclick="quickSearch('Hindi Lofi Chill')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🎧 Lo-Fi</button>
-                <button onclick="quickSearch('Punjabi Hits')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">⚡ Punjabi</button>
-                <button onclick="quickSearch('Bhojpuri Hit Songs')" class="shrink-0 text-[11px] px-3 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🎶 Bhojpuri</button>
+            <!-- Quick Mood Chips -->
+            <div class="flex gap-1.5 overflow-x-auto no-scrollbar mt-2 pb-1">
+                <button onclick="quickSearch('Bollywood Hit Songs')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🔥 Bollywood</button>
+                <button onclick="quickSearch('Kishore Kumar Classic')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">📻 Retro</button>
+                <button onclick="quickSearch('Arijit Singh Romantic')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">❤️ Romantic</button>
+                <button onclick="quickSearch('Hindi Lofi Chill')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🎧 Lo-Fi</button>
+                <button onclick="quickSearch('Punjabi Party Hits')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">⚡ Party</button>
+                <button onclick="quickSearch('Bhojpuri Hit Songs')" class="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/10 hover:bg-purple-600/40 border border-white/10 transition">🎶 Bhojpuri</button>
             </div>
         </div>
 
-        <!-- 3D Disc & Visualizer Area -->
+        <!-- 3D Disc & Visualizer -->
         <div class="relative flex flex-col items-center justify-center my-2 disc-container z-10" id="tiltArea">
-            <canvas id="visualizer" width="230" height="230" class="absolute pointer-events-none opacity-85"></canvas>
+            <canvas id="visualizer" width="220" height="220" class="absolute pointer-events-none opacity-85"></canvas>
             
-            <div id="discWrapper" class="vinyl-disc w-36 h-36 rounded-full p-1.5 bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 shadow-2xl shadow-purple-900/50 relative flex items-center justify-center">
+            <div id="discWrapper" class="vinyl-disc w-32 h-32 rounded-full p-1.5 bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 shadow-2xl shadow-purple-900/50 relative flex items-center justify-center">
                 <div id="discSpin" class="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center relative overflow-hidden spinning paused">
                     <img id="albumArt" src="" alt="" class="w-full h-full object-cover hidden opacity-85">
                     <div class="absolute inset-2 rounded-full border border-white/15"></div>
-                    <div class="absolute inset-6 rounded-full border border-white/15"></div>
-                    <div class="w-12 h-12 rounded-full bg-zinc-950/90 flex items-center justify-center border-2 border-purple-400/60 z-10 shadow-inner">
-                        <svg class="w-7 h-7" viewBox="0 0 512 512">
+                    <div class="w-11 h-11 rounded-full bg-zinc-950/90 flex items-center justify-center border-2 border-purple-400/60 z-10 shadow-inner">
+                        <svg class="w-6 h-6" viewBox="0 0 512 512">
                             <polygon points="256,115 370,180 256,245 142,180" fill="#a855f7"/>
                             <polygon points="142,180 256,245 256,375 142,310" fill="#6366f1"/>
                             <polygon points="370,180 256,245 256,375 370,310" fill="#06b6d4"/>
@@ -162,13 +204,13 @@
         </div>
 
         <!-- Song Info -->
-        <div class="text-center mt-2 mb-3 relative z-10">
-            <h2 id="songTitle" class="text-base font-bold truncate px-2">ऑनलाइन गाना खोजें या नीचे से चुनें</h2>
+        <div class="text-center mt-1 mb-2.5 relative z-10">
+            <h2 id="songTitle" class="text-sm font-bold truncate px-2">ऑनलाइन गाना खोजें या नीचे से चुनें</h2>
             <p id="songArtist" class="text-[11px] text-zinc-400 mt-0.5">3D Spatial Audio Engine</p>
         </div>
 
         <!-- Progress Bar -->
-        <div class="mb-3.5 relative z-10">
+        <div class="mb-3 relative z-10">
             <input type="range" id="progressBar" value="0" min="0" max="100" class="w-full cursor-pointer">
             <div class="flex justify-between text-[10px] text-zinc-400 mt-1 font-mono">
                 <span id="currentTime">0:00</span>
@@ -177,7 +219,7 @@
         </div>
 
         <!-- 3D & Bass Controls -->
-        <div class="grid grid-cols-2 gap-2.5 mb-4 relative z-10">
+        <div class="grid grid-cols-2 gap-2 mb-3.5 relative z-10">
             <button id="btn3D" onclick="toggle3D()" class="py-2 px-3 rounded-2xl border border-white/10 bg-white/5 text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:bg-white/10">
                 <i class="fa-solid fa-vr-cardboard text-purple-400"></i>
                 <span>3D Audio: <b id="status3D">OFF</b></span>
@@ -188,27 +230,26 @@
             </button>
         </div>
 
-        <!-- Main Playback Controls -->
-        <div class="flex items-center justify-center gap-6 mb-4 relative z-10">
-            <button onclick="prevTrack()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-zinc-300 transition">
+        <!-- Playback Controls -->
+        <div class="flex items-center justify-center gap-6 mb-3.5 relative z-10">
+            <button onclick="prevTrack()" class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-zinc-300 transition">
                 <i class="fa-solid fa-backward-step"></i>
             </button>
-            <button id="playPauseBtn" onclick="togglePlay()" class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-500 text-white text-lg flex items-center justify-center shadow-lg shadow-purple-600/40 hover:scale-105 active:scale-95 transition">
+            <button id="playPauseBtn" onclick="togglePlay()" class="w-13 h-13 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-500 text-white text-lg flex items-center justify-center shadow-lg shadow-purple-600/40 hover:scale-105 active:scale-95 transition">
                 <i id="playIcon" class="fa-solid fa-play ml-1"></i>
             </button>
-            <button onclick="nextTrack()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-zinc-300 transition">
+            <button onclick="nextTrack()" class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-zinc-300 transition">
                 <i class="fa-solid fa-forward-step"></i>
             </button>
         </div>
 
-        <!-- Online Results / Playlist -->
-        <div class="border-t border-white/10 pt-3 relative z-10">
+        <!-- Playlist -->
+        <div class="border-t border-white/10 pt-2.5 relative z-10">
             <div class="flex justify-between items-center mb-2">
                 <span id="listHeader" class="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider">ट्रेंडिंग और प्लेलिस्ट</span>
                 <span id="loaderBadge" class="hidden text-[11px] text-purple-400"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>लोड हो रहा है...</span>
             </div>
-            
-            <div id="playlist" class="max-h-44 overflow-y-auto space-y-1.5 pr-1 text-sm"></div>
+            <div id="playlist" class="max-h-40 overflow-y-auto space-y-1.5 pr-1 text-sm"></div>
         </div>
     </div>
 
@@ -230,131 +271,22 @@
         let is3DActive = false;
         let isBassActive = false;
         let panAngle = 0;
+        let fixedSpeakerPan = 0;
 
-        function initAudioContext() {
-            if (audioCtx) return;
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-                source = audioCtx.createMediaElementSource(audio);
-                panner = audioCtx.createStereoPanner();
-                bassFilter = audioCtx.createBiquadFilter();
-                bassFilter.type = "lowshelf";
-                bassFilter.frequency.value = 150;
-                bassFilter.gain.value = 0;
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 64;
+        // PeerJS Party Sync State
+        let peer = null;
+        let isHost = false;
+        let connections = [];
+        let hostConn = null;
 
-                source.connect(bassFilter);
-                bassFilter.connect(panner);
-                panner.connect(analyser);
-                analyser.connect(audioCtx.destination);
-                animate3DAndVisualizer();
-            } catch (e) {
-                console.log("WebAudio fallback:", e);
-            }
+        function togglePartyModal() {
+            document.getElementById('partyPanel').classList.toggle('hidden');
         }
 
-        function decodeHtml(html) {
-            const txt = document.createElement("textarea");
-            txt.innerHTML = html;
-            return txt.value;
-        }
-
-        function quickSearch(query) {
-            document.getElementById('searchInput').value = query;
-            searchOnlineMusic();
-        }
-
-        // Search Online Music via Open Saavn API + Audius Fallback
-        async function searchOnlineMusic() {
-            const query = document.getElementById('searchInput').value.trim() || "Bollywood Hit Songs";
-            loaderBadge.classList.remove('hidden');
-            document.getElementById('listHeader').innerText = `परिणाम: "${query}"`;
-
-            try {
-                // Primary: Free Saavn Open API (Hindi, Bollywood, Classic, Regional, English)
-                const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=15`);
-                const data = await res.json();
-
-                if (data && data.data && data.data.results && data.data.results.length > 0) {
-                    tracks = data.data.results.map(song => {
-                        const urls = song.downloadUrl || [];
-                        const bestAudio = urls[urls.length - 1]?.url || urls[0]?.url || "";
-                        const images = song.image || [];
-                        const bestImg = images[images.length - 1]?.url || "";
-                        const artistNames = song.artists?.primary?.map(a => a.name).join(", ") || "Online Artist";
-                        return {
-                            name: decodeHtml(song.name || "Unknown Track"),
-                            artist: decodeHtml(artistNames),
-                            url: bestAudio,
-                            image: bestImg
-                        };
-                    }).filter(t => t.url);
-
-                    currentIndex = 0;
-                    renderPlaylist();
-                    loaderBadge.classList.add('hidden');
-                    return;
-                }
-            } catch (err) {
-                console.log("Primary API busy, switching to Audius...");
-            }
-
-            // Fallback: Audius Open Music Platform API
-            try {
-                const audiusRes = await fetch(`https://discoveryprovider.audius.co/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=3DMusicApp`);
-                const audiusData = await audiusRes.json();
-                if (audiusData && audiusData.data) {
-                    tracks = audiusData.data.slice(0, 15).map(item => ({
-                        name: item.title,
-                        artist: item.user?.name || "Audius Artist",
-                        url: `https://discoveryprovider.audius.co/v1/tracks/${item.id}/stream?app_name=3DMusicApp`,
-                        image: item.artwork ? item.artwork['480x480'] : ""
-                    }));
-                    currentIndex = 0;
-                    renderPlaylist();
-                }
-            } catch (e) {
-                console.log("Fallback error:", e);
-            }
-            loaderBadge.classList.add('hidden');
-        }
-
-        function renderPlaylist() {
-            playlistEl.innerHTML = '';
-            if (!tracks.length) {
-                playlistEl.innerHTML = `<div class="text-center text-xs text-zinc-400 py-4">कोई गाना नहीं मिला, दूसरा नाम सर्च करें।</div>`;
-                return;
-            }
-            tracks.forEach((track, idx) => {
-                const active = idx === currentIndex && audio.src;
-                const div = document.createElement('div');
-                div.className = `p-2 rounded-xl flex items-center justify-between cursor-pointer transition ${active ? 'bg-purple-600/30 border border-purple-500/40 text-white' : 'bg-white/5 hover:bg-white/10 text-zinc-300'}`;
-                div.onclick = () => loadAndPlay(idx);
-                div.innerHTML = `
-                    <div class="flex items-center gap-2.5 truncate pr-2">
-                        ${track.image 
-                            ? `<img src="${track.image}" class="w-9 h-9 rounded-lg object-cover shrink-0 bg-zinc-800">`
-                            : `<div class="w-9 h-9 rounded-lg bg-purple-600/30 flex items-center justify-center shrink-0"><i class="fa-solid fa-music text-xs text-purple-300"></i></div>`
-                        }
-                        <div class="truncate">
-                            <div class="font-medium text-xs truncate">${track.name}</div>
-                            <div class="text-[10px] text-zinc-400 truncate">${track.artist}</div>
-                        </div>
-                    </div>
-                    <i class="fa-solid ${active && !audio.paused ? 'fa-volume-high text-purple-400' : 'fa-play text-xs opacity-60'} shrink-0 mr-1"></i>
-                `;
-                playlistEl.appendChild(div);
-            });
-        }
-
-        function loadAndPlay(index) {
-            if (!tracks[index]) return;
+        function setSpeakerChannel(val, btn) {
             initAudioContext();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            currentIndex = index;
-            const track = tracks[currentIndex];
-            audio.src = track.url;
-            document.getElementById('songTitle').innerText = track.name;
-            document.getElementById('songArtist').innerText = track.artist;
+            fixedSpeakerPan = val;
+            if (panner && !is3DActive) panner.pan.value = val;
+            document.querySelectorAll('.ch-btn').forEach(b => {
+                b.className = "ch-btn px-2 py-0.5 rounded bg-white
+                    
