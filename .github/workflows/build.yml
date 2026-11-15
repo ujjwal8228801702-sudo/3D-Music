@@ -13,10 +13,199 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle index.html into Android Assets
+      - name: Auto-Generate Complete Android Project
         run: |
           mkdir -p app/src/main/assets
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/java/com/ujjwal/music3d
+
+          # Copy index.html into assets
           cp index.html app/src/main/assets/index.html
+
+          # settings.gradle
+          cat << 'EOF' > settings.gradle
+          rootProject.name = "3D Music"
+          include ':app'
+          EOF
+
+          # root build.gradle
+          cat << 'EOF' > build.gradle
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+          }
+          EOF
+
+          # gradle.properties
+          cat << 'EOF' > gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
+
+          # app/build.gradle
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.ujjwal.music3d'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.ujjwal.music3d"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+          # AndroidManifest.xml
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_launcher"
+                  android:roundIcon="@drawable/ic_launcher"
+                  android:label="3D Music"
+                  android:usesCleartextTraffic="true"
+                  android:theme="@style/Theme.AppCompat.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # Custom 3D Music Logo Icon
+          cat << 'EOF' > app/src/main/res/drawable/ic_launcher.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="512"
+              android:viewportHeight="512">
+              <path android:fillColor="#09090B" android:pathData="M0,0h512v512h-512z" />
+              <path android:fillColor="#A855F7" android:pathData="M256,115 L370,180 L256,245 L142,180 Z" />
+              <path android:fillColor="#6366F1" android:pathData="M142,180 L256,245 L256,375 L142,310 Z" />
+              <path android:fillColor="#06B6D4" android:pathData="M370,180 L256,245 L256,375 L370,310 Z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M224,230 h12 v52 h-12 z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M250,210 h12 v92 h-12 z" />
+              <path android:fillColor="#FFFFFF" android:pathData="M276,238 h12 v40 h-12 z" />
+          </vector>
+          EOF
+
+          # MainActivity.java
+          cat << 'EOF' > app/src/main/java/com/ujjwal/music3d/MainActivity.java
+          package com.ujjwal.music3d;
+
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              private WebView webView;
+              private ValueCallback<Uri[]> filePathCallback;
+              private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().setStatusBarColor(0xFF09090B);
+                  getWindow().setNavigationBarColor(0xFF09090B);
+
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+                  settings.setMediaPlaybackRequiresUserGesture(false);
+
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                          if (MainActivity.this.filePathCallback != null) {
+                              MainActivity.this.filePathCallback.onReceiveValue(null);
+                          }
+                          MainActivity.this.filePathCallback = filePathCallback;
+                          Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                          intent.addCategory(Intent.CATEGORY_OPENABLE);
+                          intent.setType("audio/*");
+                          intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                          startActivityForResult(Intent.createChooser(intent, "Select Music Files"), FILE_CHOOSER_REQUEST_CODE);
+                          return true;
+                      }
+                  });
+
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+                      if (filePathCallback == null) return;
+                      Uri[] results = null;
+                      if (resultCode == Activity.RESULT_OK && data != null) {
+                          if (data.getClipData() != null) {
+                              int count = data.getClipData().getItemCount();
+                              results = new Uri[count];
+                              for (int i = 0; i < count; i++) {
+                                  results[i] = data.getClipData().getItemAt(i).getUri();
+                              }
+                          } else if (data.getData() != null) {
+                              results = new Uri[]{data.getData()};
+                          }
+                      }
+                      filePathCallback.onReceiveValue(results);
+                      filePathCallback = null;
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      moveTaskToBack(true);
+                  }
+              }
+          }
+          EOF
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,4 +226,4 @@ jobs:
         with:
           name: 3D-Music-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          
+      
