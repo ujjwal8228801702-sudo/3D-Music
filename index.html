@@ -30,13 +30,13 @@ input[type=range]{accent-color:#a855f7}.song{display:flex;align-items:center;gap
 <canvas id="visualizer" width="260" height="150" class="absolute top-0 opacity-70 pointer-events-none"></canvas>
 <div id="disc" class="w-40 h-40 rounded-full p-2 bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 shadow-2xl relative">
 <div class="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center overflow-hidden relative"><img id="art" class="absolute inset-0 w-full h-full object-cover hidden opacity-80" alt="Album art"><div class="absolute inset-3 rounded-full border border-white/20"></div><div class="w-12 h-12 rounded-full bg-zinc-950 border-2 border-purple-400 flex items-center justify-center z-10"><i class="fa-solid fa-music text-purple-300"></i></div></div></div>
-<h2 id="title" class="font-bold text-center mt-4 text-base">3D Music Player</h2><p id="artist" class="text-xs text-zinc-400 mt-1">Online song preview • Local MP3</p>
+<h2 id="title" class="font-bold text-center mt-4 text-base">3D Music Player</h2><p id="artist" class="text-xs text-zinc-400 mt-1">JioSaavn • Audius • Local MP3</p>
 </section>
 <section class="relative z-10 mt-3"><input id="seek" type="range" min="0" max="100" value="0" class="w-full"><div class="flex justify-between text-[10px] text-zinc-400"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></section>
 <section class="relative z-10 flex items-center justify-center gap-7 my-4"><button id="prev" class="text-xl text-zinc-300"><i class="fa-solid fa-backward-step"></i></button><button id="play" class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-500 text-xl shadow-xl"><i id="playIcon" class="fa-solid fa-play"></i></button><button id="next" class="text-xl text-zinc-300"><i class="fa-solid fa-forward-step"></i></button></section>
 <section class="relative z-10 grid grid-cols-2 gap-2 mb-4"><button id="spatial" class="bg-white/10 rounded-xl p-3 text-xs border border-white/10">🌀 3D Audio: OFF</button><button id="bass" class="bg-white/10 rounded-xl p-3 text-xs border border-white/10">🔊 Bass Boost: OFF</button></section>
-<section class="relative z-10 border-t border-white/10 pt-3"><div class="flex justify-between items-center mb-2"><b id="listTitle" class="text-xs tracking-wider text-zinc-300">SEARCH RESULTS</b><span class="text-[10px] text-zinc-500">Apple iTunes previews</span></div><div id="results" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-xs text-zinc-500 text-center py-4">Search results यहाँ दिखेंगे।</p></div></section>
-<p class="text-[10px] text-zinc-500 text-center mt-4">Online results provide short official previews where available. Full tracks may require the music service.</p>
+<section class="relative z-10 border-t border-white/10 pt-3"><div class="flex justify-between items-center mb-2"><b id="listTitle" class="text-xs tracking-wider text-zinc-300">SEARCH RESULTS</b><span class="text-[10px] text-zinc-500">JioSaavn + Audius</span></div><div id="results" class="space-y-2 max-h-64 overflow-y-auto"><p class="text-xs text-zinc-500 text-center py-4">Search results यहाँ दिखेंगे।</p></div></section>
+<p class="text-[10px] text-zinc-500 text-center mt-4">Streams depend on source availability and each track’s usage rights.</p>
 </main>
 <audio id="audio" crossorigin="anonymous"></audio>
 <script>
@@ -50,29 +50,48 @@ function time(v){if(!Number.isFinite(v))return '0:00';return Math.floor(v/60)+':
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function searchOnlineMusic(query){
  const q=(query||$('searchInput').value).trim();if(!q){say('पहले गाने या Singer का नाम लिखें।');$('searchInput').focus();return}
- $('searchInput').value=q;$('searchBtn').disabled=true;$('searchBtn').textContent='...';say('ऑनलाइन गाने खोजे जा रहे हैं...');results.innerHTML='<p class="text-xs text-center text-zinc-400 py-4">लोड हो रहा है...</p>';
- let script=null,callbackName='itunesCallback_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+ $('searchInput').value=q;$('searchBtn').disabled=true;$('searchBtn').textContent='...';say('JioSaavn पर खोज रहे हैं...');results.innerHTML='<p class="text-xs text-center text-zinc-400 py-4">JioSaavn खोज रहा है...</p>';
+ tracks=[];let primaryError=null;
  try{
-  const data=await new Promise((resolve,reject)=>{
-   let settled=false;
-   const cleanup=()=>{if(script&&script.parentNode)script.parentNode.removeChild(script);try{delete window[callbackName]}catch(_){window[callbackName]=undefined}};
-   const finish=(err,value)=>{if(settled)return;settled=true;clearTimeout(timer);cleanup();err?reject(err):resolve(value)};
-   window[callbackName]=value=>finish(null,value);
-   script=document.createElement('script');
-   script.src='https://itunes.apple.com/search?term='+encodeURIComponent(q)+'&media=music&entity=song&limit=25&country=IN&callback='+callbackName;
-   script.onerror=()=>finish(new Error('Apple search script load failed'));
-   const timer=setTimeout(()=>finish(new Error('Search timed out. Internet connection जाँचें।')),15000);
-   document.head.appendChild(script);
-  });
-  tracks=(data.results||[]).filter(x=>x.previewUrl);
-  if(!tracks.length){results.innerHTML='<p class="text-xs text-center text-zinc-400 py-4">कोई preview नहीं मिला। दूसरा नाम खोजें।</p>';say('कोई playable preview नहीं मिला।');return}
-  $('listTitle').textContent='SEARCH RESULTS ('+tracks.length+')';render();say(tracks.length+' गाने मिले। चलाने के लिए किसी गाने पर टैप करें।');
- }catch(e){console.error(e);results.innerHTML='<p class="text-xs text-center text-rose-300 py-4">ऑनलाइन खोज नहीं हो पाई। Internet जाँचें या थोड़ी देर बाद कोशिश करें।</p>';say('Search error: '+e.message)}
+  const u='https://saavn.dev/api/search/songs?query='+encodeURIComponent(q);
+  const r=await fetch(u,{method:'GET',headers:{'Accept':'application/json'}});
+  if(!r.ok)throw new Error('JioSaavn HTTP '+r.status);
+  const j=await r.json();const rows=j?.data?.results||j?.data?.songs?.results||[];
+  tracks=rows.map(s=>{
+   const links=Array.isArray(s.downloadUrl)?s.downloadUrl:[];
+   const audioLink=(links.find(x=>String(x.quality||'').includes('320'))||links[links.length-1]||{}).url||s.url||'';
+   const imgs=Array.isArray(s.image)?s.image:[];
+   const cover=(imgs.find(x=>String(x.quality||'').includes('500'))||imgs[imgs.length-1]||{}).url||'';
+   const artists=s.artists?.primary?.map(a=>a.name).filter(Boolean).join(', ')||s.primaryArtists||s.artist||'JioSaavn';
+   return {trackName:s.name||s.title||'Unknown',artistName:artists,collectionName:s.album?.name||s.album||'',artworkUrl100:cover,previewUrl:audioLink,provider:'JioSaavn'};
+  }).filter(t=>t.previewUrl);
+  if(tracks.length){$('listTitle').textContent='JIOSAAVN RESULTS ('+tracks.length+')';render();say(tracks.length+' गाने JioSaavn पर मिले।');return}
+  throw new Error('JioSaavn पर playable results नहीं मिले');
+ }catch(e){primaryError=e;console.warn('JioSaavn unavailable:',e)}
+ try{
+  say('JioSaavn उपलब्ध नहीं है — Audius backup खोज रहे हैं...');
+  const u='https://discoveryprovider.audius.co/v1/tracks/search?query='+encodeURIComponent(q)+'&limit=20';
+  const r=await fetch(u,{headers:{'Accept':'application/json'}});
+  if(!r.ok)throw new Error('Audius HTTP '+r.status);
+  const j=await r.json();const rows=j?.data||[];
+  tracks=rows.filter(s=>s.id&&s.is_streamable!==false).map(s=>({
+   trackName:s.title||'Unknown',artistName:s.user?.name||'Audius artist',
+   collectionName:s.genre||'Audius',artworkUrl100:s.artwork?.['150x150']||s.artwork?.['480x480']||'',
+   previewUrl:'https://discoveryprovider.audius.co/v1/tracks/'+encodeURIComponent(s.id)+'/stream',
+   provider:'Audius'
+  }));
+  if(!tracks.length)throw new Error('Audius पर भी गाने नहीं मिले');
+  $('listTitle').textContent='AUDIUS BACKUP ('+tracks.length+')';render();say('JioSaavn नहीं मिला। Audius backup से '+tracks.length+' गाने मिले।');
+ }catch(e){
+  console.error('Both music sources failed',primaryError,e);
+  results.innerHTML='<p class="text-xs text-center text-rose-300 py-4">JioSaavn और Audius दोनों से खोज नहीं हो पाई। Internet या API server की उपलब्धता जाँचें।</p>';
+  say('दोनों music servers से कनेक्शन नहीं हुआ।');
+ }
  finally{$('searchBtn').disabled=false;$('searchBtn').textContent='खोजें'}
 }
 function render(){results.innerHTML='';tracks.forEach((t,i)=>{const b=document.createElement('button');b.className='song';b.innerHTML='<img src="'+esc(t.artworkUrl100||'')+'" alt=""><span class="min-w-0 flex-1"><b class="block text-xs truncate">'+esc(t.trackName)+'</b><small class="block text-[10px] text-zinc-400 truncate">'+esc(t.artistName)+' • '+esc(t.collectionName||'')+'</small></span><i class="fa-solid fa-play text-purple-300 text-xs"></i>';b.addEventListener('click',()=>playTrack(i));results.appendChild(b)})}
 function initAudio(){if(audioCtx)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC){say('इस browser में Audio Effects supported नहीं हैं।');return}audioCtx=new AC();source=audioCtx.createMediaElementSource(audio);bassFilter=audioCtx.createBiquadFilter();bassFilter.type='lowshelf';bassFilter.frequency.value=150;bassFilter.gain.value=0;panner=audioCtx.createStereoPanner();analyser=audioCtx.createAnalyser();analyser.fftSize=128;source.connect(bassFilter);bassFilter.connect(panner);panner.connect(analyser);analyser.connect(audioCtx.destination);drawViz()}
-async function playTrack(i){if(i<0||i>=tracks.length)return;index=i;const t=tracks[i];audio.src=t.previewUrl;$('title').textContent=t.trackName||'Unknown';$('artist').textContent=(t.artistName||'')+' • 30 sec preview';$('art').src=t.artworkUrl100||'';$('art').classList.toggle('hidden',!t.artworkUrl100);$('disc').classList.add('spinning');$('disc').classList.remove('paused');try{initAudio();if(audioCtx&&audioCtx.state==='suspended')await audioCtx.resume();await audio.play();$('playIcon').className='fa-solid fa-pause';say('अब preview चल रहा है।')}catch(e){$('disc').classList.add('paused');say('Playback शुरू नहीं हुआ: '+e.message)}}
+async function playTrack(i){if(i<0||i>=tracks.length)return;index=i;const t=tracks[i];audio.src=t.previewUrl;$('title').textContent=t.trackName||'Unknown';$('artist').textContent=(t.artistName||'')+' • '+(t.provider||'Local MP3');$('art').src=t.artworkUrl100||'';$('art').classList.toggle('hidden',!t.artworkUrl100);$('disc').classList.add('spinning');$('disc').classList.remove('paused');try{initAudio();if(audioCtx&&audioCtx.state==='suspended')await audioCtx.resume();await audio.play();$('playIcon').className='fa-solid fa-pause';say('अब preview चल रहा है।')}catch(e){$('disc').classList.add('paused');say('Playback शुरू नहीं हुआ: '+e.message)}}
 async function togglePlay(){if(!audio.src){if(tracks.length)playTrack(0);else say('पहले ऑनलाइन गाना खोजें या MP3 चुनें।');return}if(audio.paused){try{initAudio();if(audioCtx&&audioCtx.state==='suspended')await audioCtx.resume();await audio.play()}catch(e){say('Play error: '+e.message)}}else audio.pause()}
 function next(){if(tracks.length)playTrack((index+1)%tracks.length)}
 function prev(){if(tracks.length)playTrack((index-1+tracks.length)%tracks.length)}
